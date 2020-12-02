@@ -36,7 +36,8 @@ app.post("/register", async (req, res) => {
         let result = await db.collection("users").findOne({email: data.email});
 
         if (result) {
-            res.status(409).json({result: false, message: "User Already exists!"});
+
+            res.status(409).json({result: false, message: "User Already exists!", status: 409});
             return;
         }
         data.status = "inactive";
@@ -55,8 +56,12 @@ app.post("/register", async (req, res) => {
 
         console.log(data);
 
-        // result = await db.collection("users").insertOne(data);
-        res.status(200).json({message: "User added successfully", result: true});
+        result = await db.collection("users").insertOne(data);
+        res.status(200).json({
+            message: "Registration successful, Please check your email to activate your account.",
+            result: true,
+            status: 200
+        });
     } catch (err) {
         console.log(err);
         res.status(500).json({message: "Internal server error", result: false});
@@ -69,7 +74,7 @@ app.post("/users/active/:token", async (req, res) => {
         let db = client.db("UrlShortnerDB");
         let result = await db.collection("users").findOne({activationToken: req.params.token});
         if (! result) {
-            res.status(400).json({result: false, message: "Please enter a valid activation URL!"});
+            res.status(400).json({result: false, message: "Please enter a valid activation URL!", status: 400});
             return;
         }
 
@@ -80,9 +85,9 @@ app.post("/users/active/:token", async (req, res) => {
                 status: "active"
             }
         });
-        res.status(200).json({message: "User Activated", result: true});
+        res.status(200).json({message: "User Activation successful, Please Login.", result: true, status: 200});
     } catch (err) {
-        res.status(500).json({message: "Internal Server error", result: false});
+        res.status(500).json({message: "Internal Server error", result: false, status: 500});
     }
 });
 
@@ -92,12 +97,12 @@ app.post("/users/:email", async (req, res) => {
         let db = client.db("UrlShortnerDB");
         let result = await db.collection("users").findOne({email: req.params.email});
         if (! result) {
-            res.status(404).json({result: false, message: "Please enter a valid Email!"});
+            res.status(404).json({result: false, message: "Please enter a valid Email!", status: 404});
             return;
         }
-        res.status(200).json({message: "Email Id is Valid", result: true});
+        res.status(200).json({message: "Email verified!", result: true, status: 200});
     } catch (err) {
-        res.status(500).json({message: "Internal Server error", result: false});
+        res.status(500).json({message: "Internal Server error", result: false, status: 500});
     }
 });
 
@@ -122,7 +127,7 @@ app.post("/login", async (req, res) => {
                 console.log("token", token);
                 res.status(200).json({result: true, message: "login successful", token});
             } else {
-                res.status(403).json({result: false, message: "invalid password"});
+                res.status(403).json({result: false, message: "invalid username or password!"});
             }
         } else {
             res.status(401).json({result: false, message: "Email ID is not registered"});
@@ -147,11 +152,9 @@ app.post("/users/forgotPassword/:email", async (req, res) => {
         let subject = "Password Reset Link"
 
         console.log(gmailUserName, "++++++", gmailPassword)
-        result = await sendMail(email, message, subject, gmailUserName, gmailPassword);
-        console.log(result)
+        let wait = await sendMail(email, message, subject, gmailUserName, gmailPassword);
+        // console.log(result)
         console.log(message);
-
-        console.log(data);
 
 
         let result = await db.collection("users").findOne({email: req.params.email});
@@ -162,7 +165,7 @@ app.post("/users/forgotPassword/:email", async (req, res) => {
                 passwordModificationToken: passwordModificationToken
             }
         });
-        res.status(200).json({message: "Reset link sent!", result: true});
+        res.status(200).json({message: "Please check your email to reset password.", result: true, status: 200});
     } catch (err) {
         console.log(err);
         res.status(500).json({message: "Internal server error", result: false});
@@ -193,26 +196,27 @@ app.post("/users/changePassword/:email", async (req, res) => {
         let db = client.db("UrlShortnerDB");
         let newPassword = req.body.password;
         let result = await db.collection("users").findOne({email: req.params.email});
+        let salt = await bcrypt.genSalt(8);
         if (! result) {
-            res.status(404).json({result: false, message: "User Not found!"});
+            res.status(404).json({result: false, message: "User Not found!", status: 404});
             return;
         }
         result = await db.collection("users").findOneAndUpdate({
             email: req.params.email
         }, {
             $set: {
-                password: newPassword,
+                password: await bcrypt.hash(newPassword, salt),
                 passwordModificationToken: ""
             }
         });
-        res.status(200).json({message: "Password Reset Successful!", result: true});
+        res.status(200).json({message: "Password Reset Successful!", result: true, status: 200});
     } catch (err) {
         console.log(err);
-        res.status(500).json({message: "Internal server error", result: false});
+        res.status(500).json({message: "Internal server error", result: false, status: 500});
     }
 });
 
-app.get("/shortenUrls", [authorizeUser], async (req, res) => {
+app.post("/shortenUrls", [authorizeUser], async (req, res) => {
     try {
         let client = await mongodb.connect(dbUrl);
         let db = client.db("UrlShortnerDB");
@@ -222,7 +226,13 @@ app.get("/shortenUrls", [authorizeUser], async (req, res) => {
         let email = decodedHeader.email;
         let url = req.body.url;
         let token = randomstring.generate(6);
-        result = await db.collection("urls").insertOne({email: email, url: url, token: token, createdTime: new Date()});
+        let data = {
+            email: email,
+            token: token,
+            createdTime: new Date()
+        }
+        console.log(data);
+        result = await db.collection("urls").insertOne(data);
         res.status(200).json({message: "URL Shortening Successful!", result: true, shotenedUrlToken: token});
     } catch (err) {
         console.log(err);

@@ -6,8 +6,8 @@ function authorizeUser(req, res, next) {
         req.headers.authorization,
         process.env.JWT_KEY,
         (err, decode) => {
-          console.log("err", err.toString(), "---")
-          if((err.toString()).includes("TokenExpiredError"))
+          
+          if(err && (err.toString()).includes("TokenExpiredError"))
           {
             res.status(401).json({
                 message: "Token Expired, Please login Again.",
