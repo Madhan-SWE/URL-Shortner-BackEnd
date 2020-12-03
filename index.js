@@ -32,7 +32,6 @@ app.post("/register", async (req, res) => {
         let db = client.db("UrlShortnerDB");
         let data = req.body;
         let salt = await bcrypt.genSalt(8);
-        console.log(data);
         let result = await db.collection("users").findOne({email: data.email});
 
         if (result) {
@@ -49,12 +48,7 @@ app.post("/register", async (req, res) => {
         "<a href='" + link + "'>" + link + "</a>";
         let subject = "Account Verification"
 
-        console.log(gmailUserName, "++++++", gmailPassword)
         result = await sendMail(data.email, message, subject, gmailUserName, gmailPassword);
-        console.log(result)
-        console.log(message);
-
-        console.log(data);
 
         result = await db.collection("users").insertOne(data);
         res.status(200).json({
@@ -63,7 +57,6 @@ app.post("/register", async (req, res) => {
             status: 200
         });
     } catch (err) {
-        console.log(err);
         res.status(500).json({message: "Internal server error", result: false, status: 500});
     }
 });
@@ -123,8 +116,6 @@ app.post("/login", async (req, res) => {
                     userId: data._id,
                     email: data.email
                 }, process.env.JWT_KEY, {expiresIn: "1h"});
-                console.log("valid user", isValid);
-                console.log("token", token);
                 res.status(200).json({result: true, message: "login successful", token: token, status: 200});
             } else {
                 res.status(403).json({result: false, message: "invalid username or password!", status: 400});
@@ -133,7 +124,6 @@ app.post("/login", async (req, res) => {
             res.status(401).json({result: false, message: "Email ID is not registered", status: 401});
         } client.close();
     } catch (error) {
-        console.log(error);
         res.status(500).json({message: "Internal Server error", result: false, status: 500});
     }
 });
@@ -150,11 +140,7 @@ app.post("/users/forgotPassword/:email", async (req, res) => {
         let message = "<p style='color:black;font-weight:bold'> Please click the below url to change Password</p> <br>" + 
         "<a href='" + link + "'>" + link + "</a>";
         let subject = "Password Reset Link"
-
-        console.log(gmailUserName, "++++++", gmailPassword)
         let wait = await sendMail(email, message, subject, gmailUserName, gmailPassword);
-        // console.log(result)
-        console.log(message);
 
 
         let result = await db.collection("users").findOne({email: req.params.email});
@@ -167,7 +153,6 @@ app.post("/users/forgotPassword/:email", async (req, res) => {
         });
         res.status(200).json({message: "Please check your email to reset password.", result: true, status: 200});
     } catch (err) {
-        console.log(err);
         res.status(500).json({message: "Internal server error", result: false, status: 500});
     }
 });
@@ -211,7 +196,6 @@ app.post("/users/changePassword/:email", async (req, res) => {
         });
         res.status(200).json({message: "Password Reset Successful!", result: true, status: 200});
     } catch (err) {
-        console.log(err);
         res.status(500).json({message: "Internal server error", result: false, status: 500});
     }
 });
@@ -226,7 +210,6 @@ app.post("/shortenUrls", [authorizeUser], async (req, res) => {
         let decodedHeader = jwt_decode(authHeader);
         let email = decodedHeader.email;
         let url = req.body.url; 
-        console.log(req.body)
 
         let token = randomstring.generate(6);
         let data = {
@@ -236,16 +219,13 @@ app.post("/shortenUrls", [authorizeUser], async (req, res) => {
             createdTime: new Date(),
             url
         }
-        console.log(data);
         result = await db.collection("urls").insertOne(data);
         res.status(200).json({message: "URL Shortening Successful!", result: true, token, status: 200});
     } catch (err) {
-        console.log(err);
         res.status(500).json({message: "Internal server error", result: false, status: 500});
     }
 });
 
-// [authorizeUser],
 
 app.get("/redirect/:urlToken", [authorizeUser], async (req, res) => {
     try {
@@ -255,7 +235,6 @@ app.get("/redirect/:urlToken", [authorizeUser], async (req, res) => {
         let authHeader = req.headers.authorization;
         let decodedHeader = jwt_decode(authHeader);
         let email = decodedHeader.email;
-        // email = "rcmadhankumar@gmail.com"
 
         let result = await db.collection("urls").findOne({email: email, token: req.params.urlToken});
 
@@ -263,18 +242,13 @@ app.get("/redirect/:urlToken", [authorizeUser], async (req, res) => {
             res.status(404).json({message: "Invalid URL", result: false, status: 404});
             return;
         }
-        console.log(result);
         let url = result.url;
-        console.log(url);
-        // res.redirect(url);
         res.status(200).json({message: "URL found !", result: true, url: url, status: 200});
     } catch (err) {
-        console.log(err);
         res.status(500).json({message: "Internal server error", result: false, status: 500});
     }
 });
 
-// 
 
 app.get("/urls", [authorizeUser], async (req, res) => {
     try {
@@ -284,7 +258,6 @@ app.get("/urls", [authorizeUser], async (req, res) => {
         let authHeader = req.headers.authorization;
         let decodedHeader = jwt_decode(authHeader);
         let email = decodedHeader.email;
-        console.log(email)
         let result = await db.collection("urls").find({email: email});
 
         if (! result) {
@@ -292,14 +265,12 @@ app.get("/urls", [authorizeUser], async (req, res) => {
             return;
         }
         result = await result.toArray()
-        console.log(result)
         res.status(200).json({
             body: result,
             result: true,
             status: 200
         });
     } catch (err) {
-        console.log(err);
         res.status(500).json({message: "Internal server error", result: false, status: 500});
     }
 });
@@ -313,8 +284,6 @@ app.get("/urls/dashboardData", [authorizeUser], async (req, res) => {
         let authHeader = req.headers.authorization;
         let decodedHeader = jwt_decode(authHeader);
         let email = decodedHeader.email;
-        
-        console.log(email)
         
         let d = new Date();
         d.setDate(d.getDate()-7)
@@ -437,7 +406,6 @@ app.get("/urls/dashboardData", [authorizeUser], async (req, res) => {
             status: 200
         });
     } catch (err) {
-        console.log(err);
         res.status(500).json({message: "Internal server error", result: false, status: 500});
     }
 });
@@ -449,7 +417,6 @@ app.get("/login", [authorizeUser], async (req, res) => {
             status: 200
         });
     } catch (err) {
-        console.log(err);
         res.status(500).json({message: "Internal server error", result: false, status: 500});
     }
 });

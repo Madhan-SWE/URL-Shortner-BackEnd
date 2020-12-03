@@ -18,7 +18,6 @@ function authorizeUser(req, res, next) {
           }
           if (err) throw err;
           if (decode) {
-            console.log(decode);
             next();
           } else {
             res.status(403).json({result: false, message: "User not logged in", status: 403});
