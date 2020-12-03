@@ -11,7 +11,8 @@ function authorizeUser(req, res, next) {
           {
             res.status(401).json({
                 message: "Token Expired, Please login Again.",
-                result: false
+                result: false,
+                status: 401
             })
             return 
           }
@@ -20,12 +21,12 @@ function authorizeUser(req, res, next) {
             console.log(decode);
             next();
           } else {
-            res.status(40).json({result: false, message: "User not logged in"});
+            res.status(403).json({result: false, message: "User not logged in", status: 403});
           }
         }
       );
     } else {
-        res.status(404).json({result: false, message: "User not logged in"});
+        res.status(403).json({result: false, message: "User not logged in", status: 403});
     }
   }
 
